@@ -39,11 +39,12 @@ app.post("/bot/join", async (req, res) => {
 
     // 2️⃣ Conectarse al websocket de ElevenLabs Realtime
     const elevenWs = new WebSocket(
-      `wss://api.elevenlabs.io/v1/convai/ws?model_id=${process.env.ELEVEN_MODEL_ID}`,
-      {
-        headers: { "xi-api-key": process.env.ELEVEN_API_KEY },
-      }
-    );
+  `wss://api.elevenlabs.io/v1/convai/ws?model_id=${process.env.ELEVENLABS_MODEL}`,
+  {
+    headers: { "xi-api-key": process.env.ELEVENLABS_API_KEY },
+  }
+);
+
 
     elevenWs.on("open", () => {
       console.log("🎧 Conectado a ElevenLabs Realtime API");
