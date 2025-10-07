@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 import fetch from "node-fetch";
 import WebSocket from "ws";
 import fs from "fs";
-import { ChimeSDKVoiceClient, CreateSipMediaApplicationCallCommand } from "@aws-sdk/client-chime-sdk-voice";
 
 dotenv.config();
 const app = express();
