@@ -19,43 +19,41 @@ app.post("/bot/join", async (req, res) => {
     console.log("🤖 Entrando a la reunión:", meetingData.Meeting.MeetingId);
 
     // 1️⃣ Crear attendee tipo Bot
-    const attendeeRes = await fetch(
-      "https://service.chime.aws.amazon.com/meetings",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Amz-Target": "Chime.CreateAttendee",
-          "X-Amz-Region": process.env.AWS_REGION,
-        },
-        body: JSON.stringify({
-          MeetingId: meetingData.Meeting.MeetingId,
-          ExternalUserId: `Bot-ElevenLabs-${Date.now()}`,
-        }),
-      }
-    );
+    const attendeeRes = await fetch("https://service.chime.aws.amazon.com/meetings", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Amz-Target": "Chime.CreateAttendee",
+        "X-Amz-Region": process.env.AWS_REGION,
+      },
+      body: JSON.stringify({
+        MeetingId: meetingData.Meeting.MeetingId,
+        ExternalUserId: `Bot-ElevenLabs-${Date.now()}`,
+      }),
+    });
+
     const attendee = await attendeeRes.json();
     console.log("✅ Bot agregado:", attendee.Attendee?.AttendeeId);
 
-    // 2️⃣ Conectarse al websocket de ElevenLabs Realtime
+    // 2️⃣ Conexión correcta a ElevenLabs Realtime (modelo + voz)
     const elevenWs = new WebSocket(
-  `wss://api.elevenlabs.io/v1/convai/ws?model_id=${process.env.ELEVENLABS_MODEL}`,
-  {
-    headers: { "xi-api-key": process.env.ELEVENLABS_API_KEY },
-  }
-);
-
+      `wss://api.elevenlabs.io/v1/convai/ws?model_id=${process.env.ELEVENLABS_MODEL}&voice_id=${process.env.ELEVENLABS_VOICE_ID}`,
+      {
+        headers: {
+          "xi-api-key": process.env.ELEVENLABS_API_KEY,
+          "Accept": "application/json",
+        },
+      }
+    );
 
     elevenWs.on("open", () => {
       console.log("🎧 Conectado a ElevenLabs Realtime API");
-      // Puedes enviar una frase inicial del bot:
       elevenWs.send(JSON.stringify({ text: "Hola a todos, soy el asistente virtual." }));
     });
 
     elevenWs.on("message", async (msg) => {
       const data = JSON.parse(msg);
       if (data.audio) {
-        // 🔉 Guardar o reproducir la respuesta
         const buffer = Buffer.from(data.audio, "base64");
         fs.writeFileSync("bot-response.wav", buffer);
         console.log("🔊 Respuesta de voz recibida y guardada");
@@ -67,8 +65,7 @@ app.post("/bot/join", async (req, res) => {
 
     elevenWs.on("error", (err) => console.error("⚠️ Error en ElevenLabs WS:", err));
 
-    // 3️⃣ Preparar transmisión de audio entrante desde la reunión (opcional: futura integración Chime Audio Stream)
-    console.log("📡 Preparado para recibir audio de la reunión... (se implementa siguiente etapa)");
+    console.log("📡 Preparado para recibir audio de la reunión... (siguiente etapa)");
 
     res.json({
       message: "Bot conectado a reunión y ElevenLabs (modo voz)",
@@ -81,5 +78,20 @@ app.post("/bot/join", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🤖 Bot backend con voz corriendo en puerto ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🤖 Bot backend con voz corriendo en puerto ${PORT}`);
 
+  // 🔍 Verificar API key al iniciar
+  fetch("https://api.elevenlabs.io/v1/user", {
+    headers: { "xi-api-key": process.env.ELEVENLABS_API_KEY },
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      if (data && data.subscription) {
+        console.log("✅ API Key ElevenLabs válida:", data.subscription.tier);
+      } else {
+        console.log("⚠️ API Key ElevenLabs inválida o sin permisos.");
+      }
+    })
+    .catch((err) => console.error("⚠️ Error verificando API Key:", err.message));
+});
